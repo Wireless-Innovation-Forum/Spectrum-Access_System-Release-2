@@ -36,6 +36,122 @@ from __future__ import print_function
 import numpy as np
 
 
+def GetStandardAntennaGainsHorAndVer(hor_dirs,ver_dirs,ant_azimuth=None,ant_elevation=None,ant_hor_beamwidth=None,ant_ver_beamwidth=None,
+                                    ant_mech_downtilt=None,ant_elec_downtilt=None,ant_FRB=None,ant_ULS=None,peak_ant_gain=0):
+  """Computes the antenna gain pattern using both horizontal and vertical properties.
+  
+
+  Directions and azimuth are defined compared to the north in clockwise
+  direction and shall be within [0..360] degrees.
+
+  Inputs:
+    hor_dirs:       Ray directions in horizontal plane (degrees).
+                    Either a scalar or an iterable.
+    ver_dirs:       Ray directions in vertical plane (degrees).
+                    Either a scalar or an iterable.
+    ant_azimuth:     Antenna azimuth (degrees).
+    ant_elevation:   Antenna elevation (degrees).
+    ant_hor_beamwidth:  Antenna 3dB cutoff beamwidth (degrees) in horizontal plane
+                    If None, then antenna is isotropic (default).
+    ant_ver_beamwidth:  Antenna 3dB cutoff beamwidth (degrees) in vertical plane
+                    If None, then antenna is isotropic (default).
+    ant_mech_downtilt: Antenna mechanical downtilt(value withtin range 0 to +-15 degrees)
+    ant_elec_downtilt: Antenna electrical downtilt
+    peak_ant_gain:       Antenna gain (dBi)at boresight
+
+  Returns:
+    The CBSD antenna gains (in dBi).
+    Either a scalar if hor_dirs and ver_dirs are scalar or an ndarray otherwise.
+  """
+  is_scalar = np.isscalar(hor_dirs) or np.isscalar(ver_dirs)
+  hor_dirs = np.atleast_1d(hor_dirs)
+  ver_dirs = np.atleast_1d(ver_dirs)
+  if(ant_FRB is None):
+    ant_FRB = 20
+  if(ant_ULS is None):
+    ant_ULS = 15
+
+  if (ant_hor_beamwidth is None or ant_azimuth is None or
+      ant_hor_beamwidth == 0 or ant_hor_beamwidth == 360):
+    hor_gains = peak_ant_gain * np.ones(hor_dirs.shape)
+  else:
+    bore_angle_hor = hor_dirs - ant_azimuth
+    bore_angle_hor[bore_angle_hor > 180] -= 360
+    bore_angle_hor[bore_angle_hor < -180] += 360
+    hor_gains = -min([12 * (bore_angle_hor / float(ant_hor_beamwidth))**2,ant_FRB])
+    #gains[gains < -20] = -20.
+    hor_gains += peak_ant_gain
+  
+  if (ant_ver_beamwidth is None or ant_elevation is None or
+      ant_ver_beamwidth == 0 or ant_ver_beamwidth == 360):
+    ver_gains = peak_ant_gain * np.ones(ver_dirs.shape)
+  else:
+    bore_angle_ver = ver_dirs + ant_mech_downtilt*np.cos(bore_angle_hor) + ant_elec_downtilt
+    
+    ver_gains = -min([12 * (bore_angle_ver / float(ant_ver_beamwidth))**2,ant_ULS])
+    #gains[gains < -20] = -20.
+    ver_gains += peak_ant_gain
+
+  if is_scalar: return hor_gains[0],ver_gains[0]
+  return hor_gains,ver_gains
+
+def GetAntennaGainsFromGivenPattern(hor_dir,ver_dir,ant_azimuth,ant_elevation,ant_mech_downtilt,ant_elec_downtilt,hor_pattern,ver_pattern):
+
+
+  """Computes the gain at a given direction from a given antenna pattern(horizontal and vertical).
+   
+  Output gains will be calculated in horizontal and vertical dimension.
+
+  Directions and azimuth are defined compared to the north in clockwise
+  direction and shall be within [0..360] degrees.
+
+  Inputs:
+    hor_pattern: contains horizontal plane angles and associated gains 
+    ver_pattern: containsincludes horizontal plane angles and associated gains 
+    hor_dir:  azimuth angle of the cbsd towards the receiver, relative to true north
+    ver_dir:  elevation angle of the cbsd towrads the receiver
+    ant_azimuth:     Antenna azimuth (degrees).
+    ant_elevation:   Antenna elevation (degrees).
+
+  Outputs:
+    cbsd gain in horizontal and vertical plains at the given directions
+  """
+  
+    bore_angle_hor = hor_dir - ant_azimuth #azimuth angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
+    bore_angle_hor[bore_angle_hor > 180] -= 360
+    bore_angle_hor[bore_angle_hor < -180] += 360
+    
+    #elevation angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
+    bore_angle_ver = ver_dir + ant_mech_downtilt*np.cos(bore_angle_hor) + ant_elec_downtilt 
+
+  return hor_gain, ver_gain
+
+
+def GetTwoDimensionalAntennaGain(hor_dirs,ver_dirs,hor_pattern,ver_pattern,ant_mech_downtilt=None,ant_elec_downtilt=None,peak_ant_gain=0):
+
+                           
+  """Computes the gain for a given antenna pattern.
+
+  Directions and azimuth are defined compared to the north in clockwise
+  direction and shall be within [0..360] degrees.
+
+  Inputs:
+    hor_dirs:       Ray directions in horizontal plane (degrees).
+                    Either a scalar or an iterable.
+    ver_dirs:       Ray directions in vertical plane (degrees).
+                    Either a scalar or an iterable.
+    ant_azimuth:     Antenna azimuth (degrees).
+    ant_elevation:   Antenna elevation (degrees).
+    ant_hor_beamwidth:  Antenna 3dB cutoff beamwidth (degrees) in horizontal plane
+                    If None, then antenna is isotropic (default).
+    ant_ver_beamwidth:  Antenna 3dB cutoff beamwidth (degrees) in vertical plane
+                    If None, then antenna is isotropic (default).
+    ant_mech_downtilt: Antenna mechanical downtilt(value withtin range 0 to +-15 degrees)
+    ant_elec_downtilt: Antenna electrical downtilt
+    peak_ant_gain:       Antenna gain (dBi)at boresight
+  """
+  return gains_two_dimensional
+
 def GetAntennaPatternGains(hor_dirs, ant_azimuth,
                            hor_pattern,
                            ant_gain=0):
