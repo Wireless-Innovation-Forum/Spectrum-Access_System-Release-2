@@ -33,8 +33,8 @@ class TestEnhancedAntenna(unittest.TestCase):
       ver_pattern['angle'] = list(range(-90,90,1))
       ver_pattern['gain'] = list(range(0,180,1))
       dirs = {'hor':20.5,'ver':10.5}
-      [G_H_theta_R, G_V_phi_R, G_V_phi_Rs] = antenna.GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern,ant_azimuth = 0,ant_mech_downtilt = 0)  
-      np.testing.assert_array_equal([G_H_theta_R, G_V_phi_R, G_V_phi_Rs],[200.5,100.5,100.5])
+      [G_H_theta_R, G_V_phi_R, G_V_phi_Rsup] = antenna.GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern,ant_azimuth = 0,ant_mech_downtilt = 0)  
+      np.testing.assert_array_equal([G_H_theta_R, G_V_phi_R, G_V_phi_Rsup],[200.5,100.5,100.5])
       
   def test_GetTwoDimensionalAntennaGain(self):
       hor_pattern = {}
