@@ -211,7 +211,8 @@ def GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern, ant_azimuth = 
   return G_H_theta_R, G_V_phi_R, G_V_phi_Rsup
 
 
-def GetTwoDimensionalAntennaGain(hor_dir,ver_dir,ant_azimuth,hor_pattern,ver_pattern,ant_mech_downtilt=None,ant_elec_downtilt=None,peak_ant_gain=0):
+def GetTwoDimensionalAntennaGain(hor_dir,ver_dir,hor_gain,ver_gain,ver_gain_sup_angle,
+                                 hor_pattern,ver_pattern,ant_azimuth = None,ant_mech_downtilt=None,ant_elec_downtilt=0,peak_ant_gain=0):
 
                            
   """REL2-R3-SGN-52105: Method B1 based Antenna Gain Calculation, step b
@@ -236,11 +237,16 @@ def GetTwoDimensionalAntennaGain(hor_dir,ver_dir,ant_azimuth,hor_pattern,ver_pat
     ant_elec_downtilt: Antenna electrical downtilt
     peak_ant_gain:       Antenna gain (dBi)at boresight
   """
-  [G_H_theta_R, G_V_phi_R, G_V_phi_Rs] = GetAntennaGainsFromGivenPattern(hor_dir,ver_dir,ant_azimuth,ant_mech_downtilt,ant_elec_downtilt,peak_ant_gain)
-  G_cbsd_abs = G_H_theta + ( (1-abs(hor_dir)/180)*(G_V_phi_R - G_H_theta_0) + (abs(theta)/180)*(G_V_phi_Rs - hor_pattern.gain[179]))
-  G_cbsd = G_cbsd_abs + peak_ant_gain
-
-  return gains_two_dimensional
+  G_H = hor_pattern["gain"]
+  G_H_theta_R = hor_gain
+  G_V = ver_pattern["gain"]
+  G_V_phi_R = ver_gain
+  G_V_phi_Rsup = ver_gain_sup_angle
+  G_0 = peak_ant_gain
+  G_cbsd_abs = G_H_theta_R + ( (1-abs(hor_dir)/180)*(G_V_phi_R - G_H[0]) + (abs(hor_gain)/180)*(G_V_phi_Rsup - G_H[179]))
+  G_cbsd = G_cbsd_abs + G_0
+  gain_two_dimensional = G_cbsd
+  return gain_two_dimensional
 
 def GetAntennaPatternGains(hor_dirs, ant_azimuth,
                            hor_pattern,
