@@ -18,7 +18,8 @@ from __future__ import print_function
 import numpy as np
 import unittest
 
-from reference_models.antenna import antenna
+#from reference_models.antenna import antenna
+import antenna
 
 
 class TestAntenna(unittest.TestCase):

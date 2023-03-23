@@ -36,8 +36,8 @@ from __future__ import print_function
 import numpy as np
 
 
-def GetStandardAntennaGainsHorAndVer(hor_dirs,ver_dirs,ant_azimuth=None,ant_elevation=None,ant_hor_beamwidth=None,ant_ver_beamwidth=None,
-                                    ant_mech_downtilt=None,ant_elec_downtilt=None,ant_FRB=None,ant_ULS=None,peak_ant_gain=0):
+def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth=None,ant_mech_downtilt=None,ant_elec_downtilt=0,ant_hor_beamwidth=None,ant_ver_beamwidth=None,
+                                    ant_FBR=None,ant_USLS=None,peak_ant_gain=0):
   """Computes the antenna gain pattern using both horizontal and vertical properties.
   
 
@@ -63,42 +63,47 @@ def GetStandardAntennaGainsHorAndVer(hor_dirs,ver_dirs,ant_azimuth=None,ant_elev
     The CBSD antenna gains (in dBi).
     Either a scalar if hor_dirs and ver_dirs are scalar or an ndarray otherwise.
   """
-  is_scalar = np.isscalar(hor_dirs) or np.isscalar(ver_dirs)
+  is_list = isinstance(dirs,list)
+  hor_dirs = dirs['hor']
+  ver_dirs = dirs['ver']
   hor_dirs = np.atleast_1d(hor_dirs)
   ver_dirs = np.atleast_1d(ver_dirs)
-  if(ant_FRB is None):
-    ant_FRB = 20
-  if(ant_ULS is None):
-    ant_ULS = 15
+  if(ant_FBR is None):
+    ant_FBR = 20
+  if(ant_USLS is None):
+    ant_USLS = 15
 
   if (ant_hor_beamwidth is None or ant_azimuth is None or
       ant_hor_beamwidth == 0 or ant_hor_beamwidth == 360):
     hor_gains = peak_ant_gain * np.ones(hor_dirs.shape)
   else:
-    bore_angle_hor = hor_dirs - ant_azimuth
-    bore_angle_hor[bore_angle_hor > 180] -= 360
-    bore_angle_hor[bore_angle_hor < -180] += 360
-    hor_gains = -min([12 * (bore_angle_hor / float(ant_hor_beamwidth))**2,ant_FRB])
+    theta_R = hor_dirs - ant_azimuth
+    theta_R[theta_R > 180] -= 360
+    theta_R[theta_R < -180] += 360
+    hor_gains = -min([12 * (theta_R / float(ant_hor_beamwidth))**2,ant_FBR])
     #gains[gains < -20] = -20.
     hor_gains += peak_ant_gain
   
-  if (ant_ver_beamwidth is None or ant_elevation is None or
+  if (ant_ver_beamwidth is None or ant_mech_downtilt is None or
       ant_ver_beamwidth == 0 or ant_ver_beamwidth == 360):
     ver_gains = peak_ant_gain * np.ones(ver_dirs.shape)
   else:
-    bore_angle_ver = ver_dirs + ant_mech_downtilt*np.cos(bore_angle_hor) + ant_elec_downtilt
+    phi_R = ver_dirs + ant_mech_downtilt*np.cos(theta_R*np.pi/180) + ant_elec_downtilt
     
-    ver_gains = -min([12 * (bore_angle_ver / float(ant_ver_beamwidth))**2,ant_ULS])
+    ver_gains = -min([12 * (phi_R / float(ant_ver_beamwidth))**2,ant_USLS])
     #gains[gains < -20] = -20.
     ver_gains += peak_ant_gain
 
-  if is_scalar: return hor_gains[0],ver_gains[0]
+  if not is_list: return hor_gains[0],ver_gains[0]
   return hor_gains,ver_gains
 
-def GetAntennaGainsFromGivenPattern(hor_dir,ver_dir,ant_azimuth,ant_elevation,ant_mech_downtilt,ant_elec_downtilt,hor_pattern,ver_pattern):
+def GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern, ant_azimuth = None,ant_mech_downtilt = None,ant_elec_downtilt = 0):
 
 
-  """Computes the gain at a given direction from a given antenna pattern(horizontal and vertical).
+  """ REL2-R3-SGN-52105: Method B1 based Antenna Gain Calculation, step a
+
+
+  Computes the gain at a given direction from a given antenna pattern(horizontal and vertical).
    
   Output gains will be calculated in horizontal and vertical dimension.
 
@@ -107,7 +112,7 @@ def GetAntennaGainsFromGivenPattern(hor_dir,ver_dir,ant_azimuth,ant_elevation,an
 
   Inputs:
     hor_pattern: contains horizontal plane angles and associated gains 
-    ver_pattern: containsincludes horizontal plane angles and associated gains 
+    ver_pattern: contains horizontal plane angles and associated gains 
     hor_dir:  azimuth angle of the cbsd towards the receiver, relative to true north
     ver_dir:  elevation angle of the cbsd towrads the receiver
     ant_azimuth:     Antenna azimuth (degrees).
@@ -117,20 +122,101 @@ def GetAntennaGainsFromGivenPattern(hor_dir,ver_dir,ant_azimuth,ant_elevation,an
     cbsd gain in horizontal and vertical plains at the given directions
   """
   
-    bore_angle_hor = hor_dir - ant_azimuth #azimuth angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
-    bore_angle_hor[bore_angle_hor > 180] -= 360
-    bore_angle_hor[bore_angle_hor < -180] += 360
+  is_list = isinstance(dirs,list)
+  hor_dir = dirs['hor']
+  ver_dir = dirs['ver']
+  
+  theta_R = hor_dir - ant_azimuth #azimuth angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
+  if theta_R > 180:
+    theta_R -= 360 
+  elif theta_R < -180:
+    theta_R += 360
+  
+  #elevation angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
+  phi_R = ver_dir + ant_mech_downtilt*np.cos(theta_R*180/np.pi) + ant_elec_downtilt 
+  
+  theta_list = hor_pattern['angle']
+  G_H_list = hor_pattern['gain']
+  theta_R_idx = [i for i,j in enumerate(theta_list) if j == theta_R]
+
+  phi_list = list(ver_pattern['angle'])
+  phi_Rsup_list = list([180 -i for i in ver_pattern['angle']])
+  
+  G_V_list = list(ver_pattern['gain'])
+  phi_R_idx = [i for i,j in enumerate(phi_list) if j == phi_R]  
+
+  phi_R_supplementary_angle = 180 - phi_R
+  phi_Rs_idx = [i for i,j in enumerate(phi_Rsup_list) if j == phi_R_supplementary_angle]  
+
+  if any(theta_R_idx):
+    G_H_theta_R = G_H_list[theta_R_idx]
+  else:
+    theta_diff = [theta_R - i for i in theta_list]
+    theta_diff_pos = [i for i in theta_diff if i>0]
+    theta_m = theta_list[theta_diff.index(min(theta_diff_pos))]
+
+    theta_diff_neg = [i for i in theta_diff if i<0]
     
-    #elevation angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
-    bore_angle_ver = ver_dir + ant_mech_downtilt*np.cos(bore_angle_hor) + ant_elec_downtilt 
+    theta_m_1 = theta_list[theta_diff.index(max(theta_diff_neg))]
 
-  return hor_gain, ver_gain
+    theta_m_idx = [i for i,j in enumerate(theta_list) if j == theta_m]
+    G_H_theta_m = G_H_list[theta_m_idx[0]]
+
+    theta_m_1_idx = [i for i,j in enumerate(theta_list) if j == theta_m_1]
+    G_H_theta_m_1 = G_H_list[theta_m_1_idx[0]]
+
+    G_H_theta_R_interp = ((theta_m_1-theta_R)*G_H_theta_m + (theta_R - theta_m)*G_H_theta_m_1)/(theta_m_1-theta_m)
+    G_H_theta_R = G_H_theta_R_interp
+
+  if any(phi_R_idx):
+    G_V_phi_R = G_V_list[phi_R_idx]
+  else:
+    phi_diff = [phi_R - i for i in phi_list]
+    phi_diff_pos = [i for i in phi_diff if i>0]
+    phi_n = phi_list[phi_diff.index(min(phi_diff_pos))]
+
+    phi_diff_neg = [i for i in phi_diff if i<0]
+    
+    phi_n_1 = phi_list[phi_diff.index(max(phi_diff_neg))]
+
+    phi_n_idx = [i for i,j in enumerate(phi_list) if j == phi_n]
+    G_V_phi_n = G_V_list[phi_n_idx[0]]
+
+    phi_n_1_idx = [i for i,j in enumerate(phi_list) if j == phi_n_1]
+    G_V_phi_n_1 = G_V_list[phi_n_1_idx[0]]
+
+    G_V_phi_R_interp = ((phi_n_1-phi_R)*G_V_phi_n + (phi_R - phi_n)*G_V_phi_n_1)/(phi_n_1 - phi_n)
+    G_V_phi_R = G_V_phi_R_interp
+
+  if any(phi_Rs_idx):
+    G_V_phi_Rsup = G_V_list[phi_Rs_idx]
+  else:
+    phi_Rsup_diff = [phi_R_supplementary_angle - i for i in phi_Rsup_list]
+    phi_Rs_diff_pos = [i for i in phi_Rsup_diff if i>0]
+    phi_k = phi_Rsup_list[phi_Rsup_diff.index(min(phi_Rs_diff_pos))]
+
+    phi_Rs_diff_neg = [i for i in phi_Rsup_diff if i<0]
+    phi_k_1 = phi_Rsup_list[phi_Rsup_diff.index(max(phi_Rs_diff_neg))]
+
+    phi_k_idx = [i for i,j in enumerate(phi_Rsup_list) if j == phi_k]
+    G_V_phi_k = G_V_list[phi_k_idx[0]]
+
+    phi_k_1_idx = [i for i,j in enumerate(phi_Rsup_list) if j == phi_k_1]
+    G_V_phi_k_1 = G_V_list[phi_k_1_idx[0]]
+
+    G_V_phi_Rsup_interp = ((phi_k_1-phi_R_supplementary_angle)*G_V_phi_k + (phi_R_supplementary_angle - phi_k)*G_V_phi_k_1)/(phi_k_1 - phi_k)
+    G_V_phi_Rsup = G_V_phi_Rsup_interp
+  
+    
+  return G_H_theta_R, G_V_phi_R, G_V_phi_Rsup
 
 
-def GetTwoDimensionalAntennaGain(hor_dirs,ver_dirs,hor_pattern,ver_pattern,ant_mech_downtilt=None,ant_elec_downtilt=None,peak_ant_gain=0):
+def GetTwoDimensionalAntennaGain(hor_dir,ver_dir,ant_azimuth,hor_pattern,ver_pattern,ant_mech_downtilt=None,ant_elec_downtilt=None,peak_ant_gain=0):
 
                            
-  """Computes the gain for a given antenna pattern.
+  """REL2-R3-SGN-52105: Method B1 based Antenna Gain Calculation, step b
+
+  Computes the two dimensional antenna gain at a given direction, from horizontal and vertical gain.
 
   Directions and azimuth are defined compared to the north in clockwise
   direction and shall be within [0..360] degrees.
@@ -150,6 +236,10 @@ def GetTwoDimensionalAntennaGain(hor_dirs,ver_dirs,hor_pattern,ver_pattern,ant_m
     ant_elec_downtilt: Antenna electrical downtilt
     peak_ant_gain:       Antenna gain (dBi)at boresight
   """
+  [G_H_theta_R, G_V_phi_R, G_V_phi_Rs] = GetAntennaGainsFromGivenPattern(hor_dir,ver_dir,ant_azimuth,ant_mech_downtilt,ant_elec_downtilt,peak_ant_gain)
+  G_cbsd_abs = G_H_theta + ( (1-abs(hor_dir)/180)*(G_V_phi_R - G_H_theta_0) + (abs(theta)/180)*(G_V_phi_Rs - hor_pattern.gain[179]))
+  G_cbsd = G_cbsd_abs + peak_ant_gain
+
   return gains_two_dimensional
 
 def GetAntennaPatternGains(hor_dirs, ant_azimuth,
