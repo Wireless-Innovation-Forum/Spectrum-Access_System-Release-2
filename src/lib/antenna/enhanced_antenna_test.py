@@ -30,11 +30,11 @@ class TestEnhancedAntenna(unittest.TestCase):
       hor_pattern['gain'] = list(range(0,360,1))
       
       ver_pattern = {}
-      ver_pattern['angle'] = list(range(-90,90,1))
-      ver_pattern['gain'] = list(range(0,180,1))
+      ver_pattern['angle'] = list(range(-90,270,1))
+      ver_pattern['gain'] = list(range(0,360,1))
       dirs = {'hor':20.5,'ver':10.5}
       [G_H_theta_R, G_V_phi_R, G_V_phi_Rsup] = antenna.GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern,ant_azimuth = 0,ant_mech_downtilt = 0)  
-      np.testing.assert_array_equal([G_H_theta_R, G_V_phi_R, G_V_phi_Rsup],[200.5,100.5,100.5])
+      np.testing.assert_array_equal([G_H_theta_R, G_V_phi_R, G_V_phi_Rsup],[200.5,100.5,259.5])
       
   def test_GetTwoDimensionalAntennaGain(self):
       hor_pattern = {}
@@ -42,14 +42,14 @@ class TestEnhancedAntenna(unittest.TestCase):
       hor_pattern['gain'] = list(range(0,360,1))
       
       ver_pattern = {}
-      ver_pattern['angle'] = list(range(-90,90,1))
-      ver_pattern['gain'] = list(range(0,180,1))
+      ver_pattern['angle'] = list(range(-90,270,1))
+      ver_pattern['gain'] = list(range(0,360,1))
       dirs = {'hor':20.5,'ver':10.5}
       [G_H_theta_R, G_V_phi_R, G_V_phi_Rsup] = antenna.GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern,ant_azimuth = 00,ant_mech_downtilt = 0) 
 
       gain_two_dimensional = antenna.GetTwoDimensionalAntennaGain(dirs,G_H_theta_R,G_V_phi_R,G_V_phi_Rsup,
-                                                                  hor_pattern,ver_pattern,ant_azimuth = None,
-                                                                  ant_mech_downtilt=None,ant_elec_downtilt=0,peak_ant_gain=0)
+                                                                  hor_pattern,ver_pattern,ant_azimuth = 0,
+                                                                  ant_mech_downtilt=0,ant_elec_downtilt=0,peak_ant_gain=0)
        
 
 if __name__ == '__main__':
