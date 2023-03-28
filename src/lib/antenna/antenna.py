@@ -15,7 +15,7 @@
 """Antenna gain routines for SAS.
 
 Typical usage:
-  # Get the gains for a given antenna horizontal pattern.
+  # Get the gains for a given antenna horizontal and/or vertical pattern.
   # To be used for ESC and CBSD with actual antenna patterns.
   gains = GetAntennaPatternGains(hor_dirs, ant_azimuth, pattern)
 
@@ -36,8 +36,8 @@ from __future__ import print_function
 import numpy as np
 
 
-def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth=None,ant_mech_downtilt=None,ant_elec_downtilt=0,ant_hor_beamwidth=None,ant_ver_beamwidth=None,
-                                    ant_fbr=None,peak_ant_gain=0):
+def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth = None,ant_mech_downtilt = None,ant_hor_beamwidth = None,ant_ver_beamwidth = None,
+                                    ant_fbr = None,peak_ant_gain = 0):
   """Computes the antenna gain pattern using both horizontal and vertical properties.
   
 
@@ -56,7 +56,7 @@ def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth=None,ant_mech_downtilt=Non
     ant_ver_beamwidth:  Antenna 3dB cutoff beamwidth (degrees) in vertical plane
                     If None, then antenna is isotropic (default).
     ant_mech_downtilt: Antenna mechanical downtilt(value withtin range 0 to +-15 degrees)
-    ant_elec_downtilt: Antenna electrical downtilt
+    
     peak_ant_gain:       Antenna gain (dBi)at boresight
 
   Returns:
@@ -85,7 +85,7 @@ def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth=None,ant_mech_downtilt=Non
       ant_ver_beamwidth == 0 or ant_ver_beamwidth == 360):
     ver_gains = peak_ant_gain * np.ones(ver_dirs.shape)
   else:
-    phi_r = ver_dirs + ant_mech_downtilt*np.cos(theta_r*np.pi/180) + ant_elec_downtilt
+    phi_r = ver_dirs + ant_mech_downtilt*np.cos(theta_r*np.pi/180) 
     
     ver_gains = -min([12 * (phi_r / float(ant_ver_beamwidth))**2,ant_fbr])
     ver_gains += peak_ant_gain
@@ -93,7 +93,7 @@ def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth=None,ant_mech_downtilt=Non
   if not is_list: return hor_gains[0],ver_gains[0]
   return hor_gains,ver_gains
 
-def GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern, ant_azimuth = None,ant_mech_downtilt = None,ant_elec_downtilt = 0):
+def GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern, ant_azimuth = None,ant_mech_downtilt = None):
 
 
   """ REL2-R3-SGN-52105: Method B1 based Antenna Gain Calculation, step a
@@ -118,7 +118,6 @@ def GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern, ant_azimuth = 
     cbsd gain in horizontal and vertical plains at the given directions
   """
   
-  is_list = isinstance(dirs,list)
   hor_dir = dirs['hor']
   ver_dir = dirs['ver']
   
@@ -129,7 +128,7 @@ def GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern, ant_azimuth = 
     theta_r += 360
   
   #elevation angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
-  phi_r = ver_dir + ant_mech_downtilt*np.cos(theta_r*180/np.pi) + ant_elec_downtilt 
+  phi_r = ver_dir + ant_mech_downtilt*np.cos(theta_r*180/np.pi)  
   
   theta_list = hor_pattern['angle']
   g_h_list = hor_pattern['gain']
@@ -206,8 +205,7 @@ def GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern, ant_azimuth = 
   return g_h_theta_r, g_v_phi_r, g_v_phi_rsup
 
 
-def GetTwoDimensionalAntennaGain(dirs,hor_gain,ver_gain,ver_gain_sup_angle,
-                                 hor_pattern,ver_pattern,ant_azimuth = None,ant_mech_downtilt=None,ant_elec_downtilt=0,peak_ant_gain=0):
+def GetTwoDimensionalAntennaGain(dirs,hor_gain,ver_gain,ver_gain_sup_angle,hor_pattern,peak_ant_gain = 0):
 
                            
   """REL2-R3-SGN-52105: Method B1 based Antenna Gain Calculation, step b
@@ -229,20 +227,21 @@ def GetTwoDimensionalAntennaGain(dirs,hor_gain,ver_gain,ver_gain_sup_angle,
     ant_ver_beamwidth:  Antenna 3dB cutoff beamwidth (degrees) in vertical plane
                     If None, then antenna is isotropic (default).
     ant_mech_downtilt: Antenna mechanical downtilt(value withtin range 0 to +-15 degrees)
-    ant_elec_downtilt: Antenna electrical downtilt
+    
     peak_ant_gain:       Antenna gain (dBi)at boresight
   """
   hor_dir = dirs['hor']
-  ver_dir = dirs['ver']
+
   g_h = hor_pattern["gain"]
   g_h_theta_r = hor_gain
-  g_v = ver_pattern["gain"]
+  
   g_v_phi_r = ver_gain
   g_v_phi_rsup = ver_gain_sup_angle
   g_0 = peak_ant_gain
   g_cbsd_abs = g_h_theta_r + ( (1-abs(hor_dir)/180)*(g_v_phi_r - g_h[0]) + (abs(hor_gain)/180)*(g_v_phi_rsup - g_h[179]))
   g_cbsd = g_cbsd_abs + g_0
   gain_two_dimensional = g_cbsd
+
   return gain_two_dimensional
 
 def GetAntennaPatternGains(hor_dirs, ant_azimuth,
