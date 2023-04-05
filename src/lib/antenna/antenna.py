@@ -35,100 +35,155 @@ from __future__ import print_function
 
 import numpy as np
 
-def MethodB1basedAntennaGainCalculation(dirs, ant_azimuth, peak_ant_gain, hor_pattern, ver_pattern, ant_mech_downtilt):
+def MethodB1basedAntennaGainCalculation(dirs, ant_az, peak_ant_gain, hor_pattern, ver_pattern, downtilt):
+
+   alpha = dirs['hor']
+   theta_r = alpha - ant_az
+   theta_r = np.atleast_1d(theta_r)   
+   theta_r[theta_r > 180] -= 360
+   theta_r[theta_r < -180] += 360
+
+   beta = dirs['ver']
+   phi_r = beta + downtilt*np.cos(theta_r*180/np.pi)
+
+   dirs_relative_boresight = {}
+   dirs_relative_boresight['hor'] = theta_r
+   dirs_relative_boresight['ver'] = phi_r
   
-  [g_h_theta_r, g_v_phi_r, g_v_phi_rsup] = GetAntennaGainsFromGivenPattern(dirs,hor_pattern,ver_pattern, 
-                                                                             ant_azimuth,ant_mech_downtilt)
-  g_cbsd = GetTwoDimensionalAntennaGain(dirs,g_h_theta_r,g_v_phi_r,g_v_phi_rsup,
-                                        hor_pattern[0],hor_pattern[179],peak_ant_gain)
+   [g_h_theta_r, g_v_phi_r, g_v_phi_rsup] = GetAntennaGainsFromGivenPattern(dirs_relative_boresight,hor_pattern,ver_pattern, 
+                                                                             ant_az, downtilt)
+   g_cbsd = GetTwoDimensionalAntennaGain(dirs,g_h_theta_r,g_v_phi_r,g_v_phi_rsup,
+                                        hor_pattern['gain'][0],hor_pattern['gain'][179],peak_ant_gain)
 
-  gain_two_dimensional = g_cbsd
+   gain_two_dimensional = g_cbsd
 
-  return gain_two_dimensional
+   return gain_two_dimensional
 
-def MethodCbasedAntennaGainCalculation(dirs, ant_azimuth, peak_ant_gain, ant_mech_downtilt, ant_hor_beamwidth, ant_ver_beamwidth,
-                                       ant_fbr):
-   [g_h_theta_r,g_v_phi_r] = GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth, peak_ant_gain, ant_mech_downtilt, ant_hor_beamwidth,
-                                                              ant_ver_beamwidth, ant_fbr)  
-   phi_r = dirs['ver']
+def MethodCbasedAntennaGainCalculation(dirs, ant_az, peak_ant_gain, downtilt, beamwidth_hor, beamwidth_ver,
+                                       fbr):
+   alpha = dirs['hor']
+   theta_r = alpha - ant_az
+   theta_r = np.atleast_1d(theta_r)
+   theta_r[theta_r > 180] -= 360
+   theta_r[theta_r < -180] += 360
+
+   beta = dirs['ver']
+   phi_r = beta + downtilt*np.cos(theta_r*180/np.pi)
+
+   dirs_relative_boresight = {}
+   dirs_relative_boresight['hor'] = theta_r
+   dirs_relative_boresight['ver'] = phi_r
+
+   [g_h_theta_r,g_v_phi_r] = GetStandardAntennaGainsHorAndVer(dirs_relative_boresight, ant_az, peak_ant_gain, downtilt, beamwidth_hor,
+                                                              beamwidth_ver, ant_fbr = fbr)  
+
    #in degrees
    theta_0 = 0 
    theta_180 = 180 
    phi_r_sup = 180-phi_r
   
-   dirs_0 = []
-   dirs_180 = []
-   dirs_phi_r_sup = []
+   dirs_0 = {}
+   dirs_180 = {}
+   dirs_phi_r_sup = {}
 
    dirs_0['hor'] = theta_0
    dirs_180['hor'] = theta_180
    dirs_phi_r_sup['ver'] = phi_r_sup
 
-   [g_h_theta_0,_] = GetStandardAntennaGainsHorAndVer(dirs_0,ant_azimuth,ant_hor_beamwidth,ant_fbr,peak_ant_gain)
-   [g_h_theta_180,_] = GetStandardAntennaGainsHorAndVer(dirs_180,ant_azimuth,ant_hor_beamwidth,ant_fbr,peak_ant_gain)
-   [_,g_v_phi_r_sup] = GetStandardAntennaGainsHorAndVer(dirs_phi_r_sup,ant_azimuth,ant_hor_beamwidth,ant_fbr,peak_ant_gain)
+   [g_h_theta_0,_] = GetStandardAntennaGainsHorAndVer(dirs_0,ant_az,peak_ant_gain,ant_hor_beamwidth = beamwidth_hor,
+                                                      ant_fbr = fbr)
+   
+   [g_h_theta_180,_] = GetStandardAntennaGainsHorAndVer(dirs_180,ant_az,peak_ant_gain,ant_hor_beamwidth = beamwidth_hor,
+                                                        ant_fbr = fbr)
+   [_,g_v_phi_r_sup] = GetStandardAntennaGainsHorAndVer(dirs_phi_r_sup,ant_az,peak_ant_gain, ant_mech_downtilt = downtilt, ant_ver_beamwidth = beamwidth_ver,
+                                                        ant_fbr = fbr)
    
    g_cbsd = GetTwoDimensionalAntennaGain(dirs,g_h_theta_r,g_v_phi_r,g_v_phi_r_sup,g_h_theta_0,g_h_theta_180,peak_ant_gain)
+
+
    gain_two_dimensional = g_cbsd
 
    return gain_two_dimensional
 
-def MethodDbasedAntennaGainCalculation(dirs, ant_azimuth, peak_ant_gain, hor_pattern, ant_mech_downtilt, ant_ver_beamwidth,
-                                       ant_fbr):
+def MethodDbasedAntennaGainCalculation(dirs, ant_az, peak_ant_gain, hor_patt, downtilt, ver_beamwidth, fbr):
   
-   phi_r = dirs['ver']
+   alpha = dirs['hor']
+   theta_r = alpha - ant_az
+   theta_r = np.atleast_1d(theta_r)
+   theta_r[theta_r > 180] -= 360
+   theta_r[theta_r < -180] += 360
+
+   beta = dirs['ver']
+   phi_r = beta + downtilt*np.cos(theta_r*180/np.pi)  
+
+   dirs_relative_boresight = {}
+   dirs_relative_boresight['hor'] = theta_r
+   dirs_relative_boresight['ver'] = phi_r
+    
    #in degrees
    theta_0 = 0 
    theta_180 = 180 
+   
    phi_r_sup = 180-phi_r
   
-   dirs_0 = []
-   dirs_180 = []
-   dirs_phi_r_sup = []
+   dirs_0 = {}
+   dirs_180 = {}
+   dirs_phi_r_sup = {}
 
    dirs_0['hor'] = theta_0
    dirs_180['hor'] = theta_180
    dirs_phi_r_sup['ver'] = phi_r_sup 
+   
 
-   g_h_theta_r = GetAntennaGainsFromGivenPattern(dirs, hor_pattern, ant_azimuth)
-   g_h_theta_0 = hor_pattern[0]
-   g_h_theta_180 = hor_pattern[179]
+   [g_h_theta_r,_,_] = GetAntennaGainsFromGivenPattern(dirs_relative_boresight, hor_pattern = hor_patt, ant_azimuth = ant_az)
+   g_h_theta_0 = hor_patt['gain'][0]
+   g_h_theta_180 = hor_patt['gain'][179]
 
-   [_,g_v_phi_r] = GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth,ant_mech_downtilt,ant_ver_beamwidth,
-                                                              ant_fbr,peak_ant_gain)
-   [_,g_v_phi_r_sup] = GetStandardAntennaGainsHorAndVer(dirs_phi_r_sup,ant_azimuth,ant_mech_downtilt,
-                                                        ant_ver_beamwidth,ant_fbr,peak_ant_gain)
-   g_cbsd = GetTwoDimensionalAntennaGain(dirs,g_h_theta_r,g_v_phi_r,g_v_phi_r_sup,g_h_theta_0,g_h_theta_180,peak_ant_gain)
+   [_,g_v_phi_r] = GetStandardAntennaGainsHorAndVer(dirs_relative_boresight, ant_az, peak_ant_gain, ant_mech_downtilt = downtilt, ant_ver_beamwidth = ver_beamwidth,
+                                                    ant_fbr = fbr)
+   [_,g_v_phi_r_sup] = GetStandardAntennaGainsHorAndVer(dirs_phi_r_sup,ant_az, peak_ant_gain, ant_mech_downtilt = downtilt,
+                                                        ant_ver_beamwidth = ver_beamwidth, ant_fbr = fbr)
+   g_cbsd = GetTwoDimensionalAntennaGain(dirs_relative_boresight, g_h_theta_r, g_v_phi_r, g_v_phi_r_sup, g_h_theta_0, g_h_theta_180, peak_ant_gain)
    gain_two_dimensional = g_cbsd
    
    return gain_two_dimensional
 
-def MethodEbasedAntennaGainCalculation(dirs, ant_azimuth, peak_ant_gain, hor_pattern, ant_fbr):
-   theta_r = dirs['hor']
+def MethodEbasedAntennaGainCalculation(dirs, ant_az, peak_ant_gain, hor_patt):
+   
+   alpha = dirs['hor']
+   theta_r = alpha - ant_az
+   theta_r = np.atleast_1d(theta_r)   
+   theta_r[theta_r > 180] -= 360
+   theta_r[theta_r < -180] += 360
+
+   dirs_relative_boresight = {}
+   dirs_relative_boresight['hor'] = theta_r
+   dirs_relative_boresight['ver'] = 0  
+    
    #in degrees
    theta_0 = 0 
    theta_180 = 180 
    
-   dirs_0 = []
-   dirs_180 = []
+   dirs_0 = {}
+   dirs_180 = {}
    
    dirs_0['hor'] = theta_0
    dirs_180['hor'] = theta_180 
 
-   g_h_theta_r = GetAntennaGainsFromGivenPattern(dirs, hor_pattern, ant_azimuth)
-   g_h_theta_0 = hor_pattern[0]
-   g_h_theta_180 = hor_pattern[179]
+   [g_h_theta_r,_,_] = GetAntennaGainsFromGivenPattern(dirs_relative_boresight, hor_pattern = hor_patt, ant_azimuth = ant_az)
+   g_h_theta_0 = hor_patt['gain'][0]
+   g_h_theta_180 = hor_patt['gain'][179]
 
    g_v_phi_r = 0
    g_v_phi_r_sup = 0
    
-   g_cbsd = GetTwoDimensionalAntennaGain(dirs,g_h_theta_r,g_v_phi_r,g_v_phi_r_sup,g_h_theta_0,g_h_theta_180,peak_ant_gain)
+   g_cbsd = GetTwoDimensionalAntennaGain(dirs_relative_boresight,g_h_theta_r,g_v_phi_r,g_v_phi_r_sup,g_h_theta_0,g_h_theta_180,peak_ant_gain)
    gain_two_dimensional = g_cbsd
 
    return gain_two_dimensional
  
-def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth = None,ant_mech_downtilt = None,ant_hor_beamwidth = None,ant_ver_beamwidth = None,
-                                    ant_fbr = None,peak_ant_gain = 0):
+def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth = None,peak_ant_gain = 0,ant_mech_downtilt = None,ant_hor_beamwidth = None,ant_ver_beamwidth = None,
+                                    ant_fbr = None):
   """Computes the antenna gain pattern using both horizontal and vertical properties.
   
 
@@ -160,40 +215,30 @@ def GetStandardAntennaGainsHorAndVer(dirs,ant_azimuth = None,ant_mech_downtilt =
   if(ant_fbr is None):
     ant_fbr = 20
 
-  is_list = isinstance(dirs,list)
   dirs_keys = list(dirs.keys())
 
   if'hor' in dirs_keys:
-    hor_dirs = dirs['hor']
-    hor_dirs = np.atleast_1d(hor_dirs)
+    theta_r = dirs['hor']
+    theta_r = np.atleast_1d(theta_r)
     if (ant_hor_beamwidth is None or ant_azimuth is None or
       ant_hor_beamwidth == 0 or ant_hor_beamwidth == 360):
-      hor_gains = peak_ant_gain * np.ones(hor_dirs.shape)
+      g_h_theta_r = peak_ant_gain * np.ones(theta_r.shape)
     else:
-      theta_r = hor_dirs - ant_azimuth
-      theta_r[theta_r > 180] -= 360
-      theta_r[theta_r < -180] += 360
       g_h_theta_r = -min([12 * (theta_r / float(ant_hor_beamwidth))**2,ant_fbr])
       g_h_theta_r += peak_ant_gain
-    if not is_list:
-      hor_gain = g_h_theta_r[0]
-    else:
+    
       hor_gain = g_h_theta_r
   
   if 'ver' in dirs_keys:
-    ver_dirs = dirs['ver']  
-    ver_dirs = np.atleast_1d(ver_dirs)
-  if (ant_ver_beamwidth is None or ant_mech_downtilt is None or
-      ant_ver_beamwidth == 0 or ant_ver_beamwidth == 360):
-    g_v_phi_r = peak_ant_gain * np.ones(ver_dirs.shape)
-  else:
-    phi_r = ver_dirs + ant_mech_downtilt*np.cos(theta_r*np.pi/180) 
-    
-    g_v_phi_r = -min([12 * (phi_r / float(ant_ver_beamwidth))**2,ant_fbr])
-    g_v_phi_r += peak_ant_gain   
-    if not is_list:
-      ver_gain = g_v_phi_r[0] 
-    else:
+    phi_r = dirs['ver']  
+    phi_r = np.atleast_1d(phi_r)
+    if (ant_ver_beamwidth is None or ant_mech_downtilt is None or
+        ant_ver_beamwidth == 0 or ant_ver_beamwidth == 360):
+      g_v_phi_r = peak_ant_gain * np.ones(phi_r.shape)
+    else:     
+      g_v_phi_r = -min([12 * (phi_r / float(ant_ver_beamwidth))**2,ant_fbr])
+      g_v_phi_r += peak_ant_gain   
+
       ver_gain = g_v_phi_r
 
   
@@ -226,13 +271,10 @@ def GetAntennaGainsFromGivenPattern(dirs,hor_pattern = None, ver_pattern = None,
   
   hor_dir = dirs['hor']
   ver_dir = dirs['ver']
-  
-  theta_r = hor_dir - ant_azimuth #azimuth angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
-  if theta_r > 180:
-    theta_r -= 360 
-  elif theta_r < -180:
-    theta_r += 360
-  
+
+  theta_r = hor_dir
+  phi_r = ver_dir
+
   g_h_theta_r = []
   g_v_phi_r = []
   g_v_phi_rsup = []
@@ -242,7 +284,7 @@ def GetAntennaGainsFromGivenPattern(dirs,hor_pattern = None, ver_pattern = None,
     g_h_list = hor_pattern['gain']
     theta_r_idx = [i for i,j in enumerate(theta_list) if j == theta_r]
     if any(theta_r_idx):
-      g_h_theta_r = g_h_list[theta_r_idx]
+      g_h_theta_r = g_h_list[theta_r_idx[0]]
     else:
       theta_diff = [theta_r - i for i in theta_list]
       theta_diff_pos = [i for i in theta_diff if i>0]
@@ -262,8 +304,6 @@ def GetAntennaGainsFromGivenPattern(dirs,hor_pattern = None, ver_pattern = None,
       g_h_theta_r = g_h_theta_r_interp
 
   if not ver_pattern ==  None:
-    #elevation angle of the line between the cbsd  main beam and receiver location, relative to cbsd antenna boresight
-    phi_r = ver_dir + ant_mech_downtilt*np.cos(theta_r*180/np.pi)  
     
     phi_list = list(ver_pattern['angle'])
     
